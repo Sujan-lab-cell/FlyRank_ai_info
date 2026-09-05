@@ -330,9 +330,6 @@ The user can inspect the highest-ranked pages and decide whether a refresh or in
 For the starter/proxy setup, I used:
 
 ```python
-is_declining_label = (trend_direction == "down").astype(int)
-
-
 Therefore:
 
 1 = page is classified as declining.
@@ -353,9 +350,9 @@ Important leakage rule
 Because:
 
 is_declining_label
-        ↓
+↓
 trend_direction
-        ↓
+↓
 trend_pct
 
 the following fields must not be used as model features:
@@ -392,6 +389,7 @@ Cost:
 Wasted editor time.
 Unnecessary investigation.
 Lower review efficiency.
+
 False Negative
 
 A genuinely declining/high-opportunity page is not ranked highly enough.
@@ -418,6 +416,7 @@ What is being predicted/ranked.
 Which fields are features.
 Which fields are context only.
 Which fields are deliberately excluded.
+
 Unit of Analysis
 
 For the business unit:
@@ -453,11 +452,25 @@ I did not hardcode the Hugging Face token into the notebook.
 
 The successful warehouse setup returned:
 
-Table	Rows
-dim_clients	104
-dim_content	519,606
-fact_content_daily_performance_sample	11,694,072
-fact_content_query_90d	2,414,248
+Table
+
+Rows
+
+dim_clients
+
+104
+
+dim_content
+
+519,606
+
+fact_content_daily_performance_sample
+
+11,694,072
+
+fact_content_query_90d
+
+2,414,248
 
 The full daily performance table contains approximately 78.8 million rows.
 
@@ -482,6 +495,7 @@ The starter dataset contained:
 This supports the intended starter-data grain of one content item for one client.
 
 Feature, Label, Context and Excluded Fields
+
 Features
 
 Candidate predictive features included:
@@ -506,6 +520,7 @@ scroll_rate
 For the focused leakage experiment, I used a smaller six-feature set.
 
 Label
+
 is_declining_label
 
 The label was kept separate from model features.
@@ -554,20 +569,20 @@ The feature-vector stage converts the raw dataset into the input representation 
 Conceptually:
 
 Raw Dataset
-     |
-     v
+|
+v
 Feature Selection
-     |
-     v
+|
+v
 Missingness Handling
-     |
-     v
+|
+v
 Categorical Encoding
-     |
-     v
+|
+v
 Feature Matrix X
-     |
-     +---- Target y
+|
++---- Target y
 
 The feature matrix is represented as:
 
@@ -584,11 +599,25 @@ I explicitly investigated missing values instead of blindly replacing every miss
 
 The missingness check produced:
 
-Feature	Missing values
-search_volume	2,468
-word_count	7,699
-cpc	2,468
-avg_position	0
+Feature
+
+Missing values
+
+search_volume
+
+2,468
+
+word_count
+
+7,699
+
+cpc
+
+2,468
+
+avg_position
+
+0
 
 I also checked the special value:
 
@@ -637,12 +666,34 @@ has_search_volume
 
 These were selected as a compact set covering different types of information:
 
-Feature	Signal
-impressions_90d	Search exposure
-ctr	Click-through efficiency
-avg_position	Search ranking context
-days_since_last_update	Content freshness
-has_word_count	Content-data availability
+Feature
+
+Signal
+
+impressions_90d
+
+Search exposure
+
+ctr
+
+Click-through efficiency
+
+avg_position
+
+Search ranking context
+
+days_since_last_update
+
+Content freshness
+
+has_word_count
+
+Content-data availability
+
+has_search_volume
+
+Keyword-data availability
+
 has_search_volume	Keyword-data availability
 
 These six were treated as a focused experimental feature set, not as a claim that they are the final or universally best features.
@@ -671,7 +722,7 @@ Deliberate Target Leakage
 
 I intentionally created a leaked feature:
 
-X_leak["leak_feature"] = y
+`X_leak`["`leak_feature`"] = y
 
 Here:
 
@@ -694,11 +745,13 @@ ROC-AUC = 1.000
 This was expected.
 
 Honest model
+
 ROC-AUC: 0.695
 
 This indicates that the six selected features contain meaningful signal for distinguishing the two target classes.
 
 Leaked model
+
 ROC-AUC: 1.000
 
 This does NOT mean that the real model achieved perfect performance.
@@ -711,12 +764,29 @@ ROC-AUC evaluates how well a model ranks positive examples above negative exampl
 
 A rough interpretation is:
 
-ROC-AUC	General interpretation
-0.50	Random-like ranking
-0.60	Weak signal
-~0.70	Useful signal
-0.80+	Stronger discrimination
-1.00	Perfect separation
+ROC-AUC
+
+General interpretation
+
+0.50
+
+Random-like ranking
+
+0.60
+
+Weak signal
+
+~0.70
+
+Useful signal
+
+0.80+
+
+Stronger discrimination
+
+1.00
+
+Perfect separation
 
 ROC-AUC is different from accuracy.
 
@@ -730,7 +800,7 @@ After the leakage experiment, the deliberately leaked field was removed.
 
 The final verification checked:
 
-"leak_feature" in X_clean.columns
+"`leak_feature`" in `X_clean.columns`
 
 The result was:
 
@@ -753,7 +823,7 @@ Important Data Gotchas Identified
 
 During Weeks 1–3, I identified several important properties of the dataset that affect ML validity.
 
-1. Rate columns are percentages multiplied by 100
+Rate columns are percentages multiplied by 100
 
 For example:
 
@@ -780,7 +850,7 @@ rank = 0
 
 Therefore position availability must be handled explicitly.
 
-3. Missingness is informative
+Missingness is informative
 
 Missing values can depend on content_type.
 
@@ -792,7 +862,7 @@ can accidentally turn missingness into a hidden category signal.
 
 Therefore I introduced availability flags where appropriate.
 
-4. IDs are not features
+IDs are not features
 
 The following are identifiers:
 
@@ -807,19 +877,19 @@ Splitting.
 
 They should not be used as predictive features.
 
-5. Trend fields create leakage
+Trend fields create leakage
 
 Because:
 
 trend_pct
-     ↓
+↓
 trend_direction
-     ↓
+↓
 is_declining_label
 
 the trend fields must remain outside the feature matrix.
 
-6. Recent-period features require time alignment
+Recent-period features require time alignment
 
 Fields such as:
 
@@ -834,7 +904,7 @@ However, they must be checked against the prediction date and outcome window.
 
 A feature is only valid if it would actually be known at the time the decision is made.
 
-7. The warehouse is an unbalanced panel
+The warehouse is an unbalanced panel
 
 Different clients have different amounts of historical data.
 
@@ -842,7 +912,7 @@ Therefore global calendar windows cannot automatically be assumed to be valid fo
 
 Client-level history availability must be checked.
 
-8. GA4 availability must be checked explicitly
+GA4 availability must be checked explicitly
 
 Some rows occur before a client's GA4 data became available.
 
@@ -854,7 +924,7 @@ ga4_data_available
 
 should be used rather than assuming zero means no engagement.
 
-9. Query-level context should not be blindly summed
+Query-level context should not be blindly summed
 
 The query table contains per-content context repeated across query rows.
 
@@ -869,6 +939,7 @@ What Was Required vs What I Added
 One of the main goals of this repository is to clearly distinguish the internship requirements from additional work I performed.
 
 Week 1
+
 Required
 Run the starter notebook.
 Understand the dataset.
@@ -883,7 +954,9 @@ Investigated different age tiers.
 Reported sample-size limitations.
 Avoided interpreting correlation as causation.
 Documented the business meaning of the observed patterns.
+
 Week 2
+
 Required
 Select a lane.
 Write a research question.
@@ -899,7 +972,9 @@ Explained false-positive and false-negative costs.
 Documented why Precision@50 is more relevant to the review-queue use case.
 Distinguished scoring/ranking from simple yes/no prediction.
 Documented what the model will and will not claim.
+
 Week 3
+
 Required
 Create a data contract.
 Define the row grain.
@@ -928,33 +1003,89 @@ Programmatically verified that the leaked feature was gone.
 Programmatically verified that excluded fields were absent from the final feature matrix.
 Built a final feature matrix with numeric features, availability flags and categorical encoding.
 Documented important dataset gotchas and temporal-alignment concerns.
+
 Key Results
+
 Week 1
-Result	Value
-Starter rows	30,000
-Baseline Precision@50	0.240
-Random Forest Precision@50	0.740
-Approximate improvement	3.1×
+
+Result
+
+Value
+
+Starter rows
+
+30,000
+
+Baseline Precision@50
+
+0.240
+
+Random Forest Precision@50
+
+0.740
+
+Approximate improvement
+
+3.1×
+
 Week 2
-Component	Result
-Selected lane	Lane 2
-Problem	Refresh / Content Opportunity Scoring
-Main output	Ranked review queue
-Primary metric	Precision@50
-Starter declining pages	16,262
-Starter non-declining pages	13,738
+
+Component
+
+Result
+
+Selected lane
+
+Lane 2
+
+Problem
+
+Refresh / Content Opportunity Scoring
+
+Main output
+
+Ranked review queue
+
+Primary metric
+
+Precision@50
+
+Starter declining pages
+
+16,262
+
+Starter non-declining pages
+
+13,738
+
+Declining base rate
+
+~54.2%
+
 Declining base rate	~54.2%
+
 Week 3
-Experiment	ROC-AUC
-Honest six-feature set	0.695
-Deliberately leaked feature	1.000
+
+Experiment
+
+ROC-AUC
+
+Honest six-feature set
+
+0.695
+
+Deliberately leaked feature
+
+1.000
 
 The 1.000 score is intentionally invalid and demonstrates target leakage.
 
 The honest score of 0.695 is the meaningful result from this particular six-feature experiment.
 
 Notebook Structure
+
 Week 1
+
 ML-01
 notebooks/
 └── 01_first_look_and_discovery.ipynb
@@ -965,7 +1096,9 @@ Dataset discovery.
 Baseline.
 First learned model.
 Initial analysis.
+
 Week 2
+
 ML-02
 work/notebooks/
 └── w01_research_question.ipynb
@@ -989,7 +1122,9 @@ Target.
 Metric.
 Unit of analysis.
 Ranking/scoring formulation.
+
 Week 3
+
 ML-04
 work/notebooks/
 └── w03_data_contract.ipynb
@@ -1013,6 +1148,7 @@ Honest feature evaluation.
 Deliberate leakage.
 Leakage removal.
 Final feature-matrix verification.
+
 Repository Structure
 
 The project is organized around the internship workflow.
@@ -1040,37 +1176,42 @@ flyrank-ml-internship/
 │   └── ml-core-foundation-framework.md
 │
 └── README.md
+
 Current Status
+
 Completed
- Week 1 discovery work.
- Starter dataset exploration.
- Baseline evaluation.
- Learned-model comparison.
- Custom content-age analysis.
- Content-type analysis.
- Lane selection.
- Research question.
- Business decision definition.
- User/action definition.
- Error-cost analysis.
- ML task framing.
- Target definition.
- Metric definition.
- Data contract.
- Data-grain verification.
- Warehouse access.
- Feature selection.
- Missingness analysis.
- Availability checks.
- Feature-vector construction.
- Leakage experiment.
- Honest ROC-AUC evaluation.
- Deliberate leaked ROC-AUC evaluation.
- Leakage removal.
- Final excluded-feature verification.
- Week 3 notebook updates and resubmission preparation.
+
+Week 1 discovery work.
+Starter dataset exploration.
+Baseline evaluation.
+Learned-model comparison.
+Custom content-age analysis.
+Content-type analysis.
+Lane selection.
+Research question.
+Business decision definition.
+User/action definition.
+Error-cost analysis.
+ML task framing.
+Target definition.
+Metric definition.
+Data contract.
+Data-grain verification.
+Warehouse access.
+Feature selection.
+Missingness analysis.
+Availability checks.
+Feature-vector construction.
+Leakage experiment.
+Honest ROC-AUC evaluation.
+Deliberate leaked ROC-AUC evaluation.
+Leakage removal.
+Final excluded-feature verification.
+Week 3 notebook updates and resubmission preparation.
+
 Lessons Learned
-1. Start with the decision, not the model
+
+Start with the decision, not the model
 
 A machine learning model is useful only when its output changes or improves a real decision.
 
@@ -1082,13 +1223,13 @@ It is:
 
 "Which pages should the content team investigate first?"
 
-2. Ranking changes how success is measured
+Ranking changes how success is measured
 
 If a human team can only review 50 pages, the top of the ranking matters much more than the performance across every page.
 
 That is why Precision@50 is important for the Lane 2 business objective.
 
-3. Data leakage can make a bad model look perfect
+Data leakage can make a bad model look perfect
 
 The deliberate leakage experiment demonstrated this clearly.
 
@@ -1105,7 +1246,7 @@ The first question must be:
 
 "Is the evaluation honest?"
 
-4. Missing values contain information
+Missing values contain information
 
 A missing value is not always equivalent to zero.
 
@@ -1124,7 +1265,7 @@ Therefore every feature needs a clear answer to:
 
 "Would I know this information at the prediction/decision moment?"
 
-6. IDs should not become accidental features
+IDs should not become accidental features
 
 Identifiers can allow a model to memorize clients or pages instead of learning generalizable patterns.
 
@@ -1159,6 +1300,7 @@ Evaluating the model against the frozen baseline.
 Performing robust validation.
 Measuring whether the learned ranking provides useful decision support.
 Documenting limitations and defensible claims.
+
 Final Summary
 
 During the first three weeks of the FlyRank ML Internship, I progressed from basic dataset discovery to a clearly defined ML problem and an explicitly validated feature pipeline.
@@ -1166,25 +1308,28 @@ During the first three weeks of the FlyRank ML Internship, I progressed from bas
 The work followed this progression:
 
 Dataset Discovery
-       ↓
+↓
 Initial ML Experiment
-       ↓
+↓
 Business Problem Selection
-       ↓
+↓
 Lane 2: Content Opportunity Scoring
-       ↓
+↓
 ML Task Framing
-       ↓
+↓
 Data Contract
-       ↓
+↓
 Feature Selection
-       ↓
+↓
 Missingness & Availability Checks
-       ↓
+↓
+
 Leakage Experiment
-       ↓
+
+   ↓
+
 Leakage Removal
-       ↓
+↓
 Final Feature Verification
 
 The most important outcome is not simply a model score.
@@ -1208,15 +1353,14 @@ This provides the foundation for the next stages of the internship, where the fo
 
 "Can I build an honest model that improves the content-review decision?"
 
+One important note
 
-### One important note
+I deliberately wrote this README so your extra work is visible, rather than making it look like you only completed the mandatory notebook cells. In particular, your warehouse connection, missingness investigation, avg_position check, deliberate leakage experiment, ROC-AUC comparison, and automated excluded-feature verification are clearly identified as additional work.
 
-I deliberately wrote this README so your **extra work is visible**, rather than making it look like you only completed the mandatory notebook cells. In particular, your **warehouse connection, missingness investigation, `avg_position` check, deliberate leakage experiment, ROC-AUC comparison, and automated excluded-feature verification** are clearly identified as additional work.
-
-Also, I have **not claimed that ML-05 is a separate official Week-3 notebook name** where the available assignment material doesn't explicitly establish that; I've described it as your Week 3 feature/leakage work. The internship's skill index does explicitly associate ML-05 with the leakage/warehouse work. :contentReference[oaicite:3]{index=3}
+Also, I have not claimed that ML-05 is a separate official Week-3 notebook name where the available assignment material doesn't explicitly establish that; I've described it as your Week 3 feature/leakage work. The internship's skill index does explicitly associate ML-05 with the leakage/warehouse work. 
 
 Increase memory for more relevant answers
 Upgrade to expand the amount of detail ChatGPT can bring into responses from your saved files and past conversations.
 Upgrade to Plus
 
-it 
+it
